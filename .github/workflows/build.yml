@@ -11,52 +11,87 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Mengambil file dari repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2. Menyiapkan Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      # 3. Menyiapkan Gradle
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
+      # 4. Menyiapkan Android SDK
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
 
+      # 5. Mengekstrak ZIP proyek BTN
       - name: Extract BTN project
         run: |
-          ZIP_FILE="$(find . -maxdepth 1 -type f -name 'BTN-Android-Prototype*.zip' -print -quit)"
+          ZIP_FILE=$(find . -maxdepth 1 -type f \
+            -name 'BTN-Android-Prototype*.zip' -print -quit)
+
           if [ -z "$ZIP_FILE" ]; then
-            echo "File ZIP proyek BTN tidak ditemukan!"
+            echo "ZIP proyek BTN tidak ditemukan!"
             exit 1
           fi
+
           mkdir -p BTN-Android
           unzip -q "$ZIP_FILE" -d BTN-Android
 
-      - name: Check project files
-        working-directory: BTN-Android
+      # 6. Mencari folder proyek Gradle
+      - name: Find Gradle project
         run: |
-          ls -la
-          if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
-            echo "File Gradle project tidak ditemukan!"
+          PROJECT_FILE=$(find BTN-Android -type f \
+            \( -name settings.gradle -o -name settings.gradle.kts \) \
+            -print -quit)
+
+          if [ -z "$PROJECT_FILE" ]; then
+            echo "File settings.gradle tidak ditemukan!"
+            echo "Daftar isi proyek:"
+            find BTN-Android -maxdepth 5 -type f
             exit 1
           fi
 
-      - name: Build APK
-        working-directory: BTN-Android
-        run: gradle assembleDebug
+          PROJECT_DIR=$(dirname "$PROJECT_FILE")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Upload APK
+          echo "Proyek ditemukan di: $PROJECT_DIR"
+
+      # 7. Memeriksa proyek
+      - name: Check project
+        run: |
+          echo "Lokasi proyek: $PROJECT_DIR"
+          ls -la "$PROJECT_DIR"
+
+      # 8. Membangun APK
+      - name: Build BTN APK
+        run: |
+          cd "$PROJECT_DIR"
+
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          else
+            gradle assembleDebug
+          fi
+
+      # 9. Mengunggah APK
+      - name: Upload BTN APK
         uses: actions/upload-artifact@v4
         with:
           name: BTN-APK
-          path: BTN-Android/app/build/outputs/apk/debug/*.apk
+          path: |
+            BTN-Android/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 7
