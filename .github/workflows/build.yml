@@ -1,61 +1,62 @@
 name: Build BTN APK
 
 on:
-workflow_dispatch:
-push:
-branches: [ main ]
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-build:
-runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Checkout repository
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  - name: Setup Java
-    uses: actions/setup-java@v4
-    with:
-      distribution: temurin
-      java-version: '17'
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-  - name: Setup Gradle
-    uses: gradle/actions/setup-gradle@v4
-    with:
-      gradle-version: '8.9'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
 
-  - name: Setup Android SDK
-    uses: android-actions/setup-android@v4
-    with:
-      accept-android-sdk-licenses: true
-      log-accepted-android-sdk-licenses: false
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
 
-  - name: Extract BTN project
-    run: |
-      ZIP_FILE="$(find . -maxdepth 1 -type f -name 'BTN-Android-Prototype*.zip' -print -quit)"
-      if [ -z "$ZIP_FILE" ]; then
-        echo "File ZIP proyek BTN tidak ditemukan!"
-        exit 1
-      fi
-      mkdir -p BTN-Android
-      unzip -q "$ZIP_FILE" -d BTN-Android
+      - name: Extract BTN project
+        run: |
+          ZIP_FILE="$(find . -maxdepth 1 -type f -name 'BTN-Android-Prototype*.zip' -print -quit)"
+          if [ -z "$ZIP_FILE" ]; then
+            echo "File ZIP proyek BTN tidak ditemukan!"
+            exit 1
+          fi
+          mkdir -p BTN-Android
+          unzip -q "$ZIP_FILE" -d BTN-Android
 
-  - name: Check project files
-    working-directory: BTN-Android
-    run: |
-      ls -la
-      if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
-        echo "File Gradle project tidak ditemukan!"
-        exit 1
-      fi
+      - name: Check project files
+        working-directory: BTN-Android
+        run: |
+          ls -la
+          if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
+            echo "File Gradle project tidak ditemukan!"
+            exit 1
+          fi
 
-  - name: Build APK
-    working-directory: BTN-Android
-    run: gradle assembleDebug
+      - name: Build APK
+        working-directory: BTN-Android
+        run: gradle assembleDebug
 
-  - name: Upload APK
-    uses: actions/upload-artifact@v4
-    with:
-      name: BTN-APK
-      path: BTN-Android/app/build/outputs/apk/debug/*.apk
-      if-no-files-found: error
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTN-APK
+          path: BTN-Android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
